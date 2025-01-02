@@ -1,57 +1,194 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-// Get all tasks
-const getTasks = async (req, res) => {
-    try {
-        const tasks = await prisma.task.findMany();
-        res.json(tasks);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch tasks' });
-    }
+// Get all tasks with pagination
+const getTasks = async (skip = 0, take = 6) => {
+  return await prisma.task.findMany({
+    skip: skip,
+    take: take,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
 };
 
-// Create a new task
-const createTask = async (req, res) => {
-    const { title, description } = req.body;
-    if (!title) return res.status(400).json({ error: 'Title is required' });
-
-    try {
-        const newTask = await prisma.task.create({
-            data: { title, description },
-        });
-        res.status(201).json(newTask);
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create task' });
-    }
+// Create a new task with a category
+const createTaskWithCategory = async (title, description, categoryId) => {
+  return await prisma.task.create({
+    data: {
+      title,
+      description,
+      category: { connect: { id: categoryId } },
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
 };
 
-// Update a task
-const updateTask = async (req, res) => {
-    const { id } = req.params;
-    const { title, description } = req.body;
-
-    try {
-        const updatedTask = await prisma.task.update({
-            where: { id: Number(id) },
-            data: { title, description },
-        });
-        res.json(updatedTask);
-    } catch (error) {
-        res.status(404).json({ error: 'Task not found' });
-    }
+// Filter tasks by urgency with pagination
+const filterTasksByUrgency = async (urgency, skip = 0, take = 6) => {
+  return await prisma.task.findMany({
+    where: {
+      category: { urgency },
+    },
+    skip: skip,
+    take: take,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
 };
 
-// Delete a task
-const deleteTask = async (req, res) => {
-    const { id } = req.params;
-
-    try {
-        await prisma.task.delete({ where: { id: Number(id) } });
-        res.status(204).send();
-    } catch (error) {
-        res.status(404).json({ error: 'Task not found' });
-    }
+// Filter tasks by context with pagination
+const filterTasksByContext = async (context, skip = 0, take = 6) => {
+  return await prisma.task.findMany({
+    where: {
+      category: { context },
+    },
+    skip: skip,
+    take: take,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
 };
 
-module.exports = { getTasks, createTask, updateTask, deleteTask };
+// Filter tasks by both urgency and context with pagination
+const filterTasksByUrgencyAndContext = async (
+  urgency,
+  context,
+  skip = 0,
+  take = 6
+) => {
+  return await prisma.task.findMany({
+    where: {
+      AND: [
+        {
+          category: { urgency: urgency },
+        },
+        {
+          category: { context: context },
+        },
+      ],
+    },
+    skip: skip,
+    take: take,
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
+};
+
+// Update a task's category
+const updateTaskCategory = async (taskId, categoryId) => {
+  return await prisma.task.update({
+    where: { id: taskId },
+    data: { category: { connect: { id: categoryId } } }, // Connect to a different category
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
+};
+
+// Retrieve all tasks with their categories
+const getAllTasksWithCategories = async () => {
+  return await prisma.task.findMany({
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      createdAt: true,
+      category: {
+        select: {
+          id: true,
+          urgency: true,
+          context: true,
+        },
+      },
+    },
+  });
+};
+
+// Query tasks from the last five days
+const getTasksFromLastFiveDays = async () => {
+  const fiveDaysAgo = new Date();
+  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+
+  return await prisma.task.findMany({
+    where: {
+      createdAt: { gte: fiveDaysAgo },
+    },
+  });
+};
+
+module.exports = {
+  getTasks,
+  createTaskWithCategory,
+  filterTasksByUrgency,
+  filterTasksByContext,
+  filterTasksByUrgencyAndContext,
+  updateTaskCategory,
+  getAllTasksWithCategories,
+  getTasksFromLastFiveDays,
+};

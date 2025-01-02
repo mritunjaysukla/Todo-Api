@@ -14,7 +14,17 @@ datasource db {
 }
 
 model Task {
-  id          Int     @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   title       String
-  description String?
+  description String
+  createdAt   DateTime  @default(now())
+  category    Category? @relation(fields: [categoryId], references: [id]) // Relation to Category
+  categoryId  Int?
+}
+
+model Category {
+  id      Int    @id @default(autoincrement())
+  urgency String
+  context String
+  tasks   Task[] @relation // Relation to Task
 }
